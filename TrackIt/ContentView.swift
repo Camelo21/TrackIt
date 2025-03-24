@@ -1,66 +1,81 @@
-//
-//  ContentView.swift
-//  TrackIt
-//
-//  Created by Camilo Melo bernal on 23/03/25.
-//
-
 import SwiftUI
 import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @Query private var milestones: [Milestone]
+
+    @State private var showingNewMilestone = false
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+        NavigationStack {
+            VStack {
+                // Show a message if there are no milestones
+                if milestones.isEmpty {
+                    Text("No milestones yet.")
+                        .foregroundColor(.gray)
+                        .font(.headline)
+                        .padding()
+                } else {
+                    List {
+                        ForEach(milestones) { milestone in
+                            NavigationLink(destination: Text("Milestone: \(milestone.name)")) {
+                                VStack(alignment: .leading) {
+                                    HStack {
+                                        Text(milestone.name)
+                                            .font(.headline)
+                                        Spacer()
+                                        if let nextReward = milestone.nextReward {
+                                            Text(nextReward.rewardIcon)
+                                        } else {
+                                            Text("🎯") // Safe fallback
+                                        }
+                                    }
+                                    Text("Tracking: \(milestone.daysSinceStart) days")
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+
+                                    if let nextReward = milestone.nextReward {
+                                        Text("Next reward in \(max(nextReward.daysRequired - milestone.daysSinceStart, 0)) days: \(nextReward.rewardName)")
+                                            .font(.subheadline)
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-                .onDelete(perform: deleteItems)
             }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
+            .navigationTitle("TrackIt")
             .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
                 ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
+                    Button(action: { showingNewMilestone = true }) {
+                        Label("Add Milestone", systemImage: "plus")
                     }
                 }
             }
-        } detail: {
-            Text("Select an item")
+            .sheet(isPresented: $showingNewMilestone) {
+                NewMilestoneView()
+            }
         }
     }
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
+    /// Deletes a milestone from SwiftData
+    private func deleteMilestone(offsets: IndexSet) {
         withAnimation {
             for index in offsets {
-                modelContext.delete(items[index])
+                modelContext.delete(milestones[index])
             }
         }
     }
 }
 
 #Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+    let container = try! ModelContainer(for: Milestone.self, configurations: .init(isStoredInMemoryOnly: true))
+
+    let previewMilestone = Milestone(name: "Test Milestone", daysTracked: 5)
+    container.mainContext.insert(previewMilestone)
+
+    return ContentView()
+        .modelContainer(container)
 }
