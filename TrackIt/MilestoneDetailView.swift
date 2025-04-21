@@ -1,23 +1,21 @@
 import SwiftUI
 import SwiftData
 
-/// View for editing an existing milestone
 struct MilestoneDetailView: View {
     @Bindable var milestone: Milestone
     @Environment(\.dismiss) private var dismiss
 
-    // State for editing milestone details
     @State private var milestoneName: String
     @State private var trackingType: String
     @State private var selectedIcon: String
     @State private var rewardMilestones: [RewardMilestone]
-    
+
     @State private var newRewardName: String = ""
     @State private var rewardDays: Int = 7
-    @State private var selectedRewardIcon: String = "🎁"
-    
-    let icons = ["🎯", "🏆", "🎮", "📚", "🏋️‍♂️", "🍕"] // Icon options
-    
+    @State private var selectedRewardIcon: String = "🏵"
+
+    let icons = ["🎯", "🏆", "🎮", "📚", "🏋️", "🍕"]
+
     init(milestone: Milestone) {
         self.milestone = milestone
         _milestoneName = State(initialValue: milestone.name)
@@ -27,126 +25,204 @@ struct MilestoneDetailView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                // Edit Milestone Name
-                Section(header: Text("Milestone Name")) {
-                    TextField("Enter Milestone Name", text: $milestoneName)
-                }
+        ZStack {
+            LinearGradient(
+                gradient: Gradient(colors: [Color.blue.opacity(0.9), Color.indigo.opacity(0.8)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
-                // Select Tracking Type
-                Section(header: Text("Tracking Type")) {
-                    Picker("Track by", selection: $trackingType) {
-                        Text("Consecutive Days").tag("days")
-                        Text("Total Actions").tag("count")
+            ScrollView {
+                VStack(spacing: 25) {
+                    Text("Edit Milestone")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .shadow(radius: 5)
+                        .padding(.top)
+
+                    Group {
+                        customSectionTitle("Milestone Name")
+                        customTextField("Enter Milestone Name", text: $milestoneName)
                     }
-                    .pickerStyle(SegmentedPickerStyle())
-                }
 
-                // Select Milestone Icon
-                Section(header: Text("Select Icon")) {
-                    ScrollView(.horizontal, showsIndicators: false) {
+                    Group {
+                        customSectionTitle("Tracking Type")
                         HStack {
-                            ForEach(icons, id: \.self) { icon in
-                                Text(icon)
-                                    .font(.largeTitle)
-                                    .padding()
-                                    .background(selectedIcon == icon ? Color.blue.opacity(0.3) : Color.clear)
-                                    .clipShape(Circle())
-                                    .onTapGesture {
-                                        selectedIcon = icon
+                            Spacer()
+                            Picker("Track by", selection: $trackingType) {
+                                Text("Days").tag("days")
+                                Text("Actions").tag("count")
+                            }
+                            .pickerStyle(SegmentedPickerStyle())
+                            .frame(width: 250)
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(10)
+                            .padding()
+                            Spacer()
+                        }
+                    }
+
+                    Group {
+                        customSectionTitle("Select Icon")
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                ForEach(icons, id: \.self) { icon in
+                                    Text(icon)
+                                        .font(.largeTitle)
+                                        .padding()
+                                        .background(selectedIcon == icon ? Color.white.opacity(0.3) : Color.white.opacity(0.15))
+                                        .clipShape(Circle())
+                                        .overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 1))
+                                        .onTapGesture { selectedIcon = icon }
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+
+                    Group {
+                        customSectionTitle("Rewards")
+                        VStack(spacing: 15) {
+                            customTextField("Reward Name", text: $newRewardName)
+
+                            Stepper("\(rewardDays) \(trackingType == "days" ? "days" : "actions")", value: $rewardDays, in: 1...365)
+                                .foregroundColor(.white)
+                                .padding(.horizontal)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 12) {
+                                    ForEach(icons, id: \.self) { icon in
+                                        Text(icon)
+                                            .font(.largeTitle)
+                                            .padding()
+                                            .background(selectedRewardIcon == icon ? Color.white.opacity(0.3) : Color.white.opacity(0.15))
+                                            .clipShape(Circle())
+                                            .overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 1))
+                                            .onTapGesture { selectedRewardIcon = icon }
                                     }
+                                }
+                                .padding(.horizontal)
+                            }
+
+                            Button(action: {
+                                let newReward = RewardMilestone(daysRequired: rewardDays, rewardName: newRewardName, rewardIcon: selectedRewardIcon)
+                                rewardMilestones.append(newReward)
+                                newRewardName = ""
+                            }) {
+                                Text("Add Reward")
+                                    .foregroundColor(.white)
+                                    .font(.title3.bold())
+                                    .padding(.vertical, 14)
+                                    .padding(.horizontal, 32)
+                                    .background(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [Color.blue.opacity(0.9), Color.indigo.opacity(0.8)]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .cornerRadius(14)
+                                    .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 4)
+                            }
+                            .disabled(newRewardName.isEmpty)
+                            .padding(.top)
+                        }
+                        .padding(.horizontal)
+                    }
+
+                    if !rewardMilestones.isEmpty {
+                        customSectionTitle("Existing Rewards")
+                        VStack(spacing: 10) {
+                            ForEach(rewardMilestones, id: \.id) { reward in
+                                HStack {
+                                    Text("\(reward.rewardIcon) \(reward.rewardName)")
+                                    Spacer()
+                                    Text("\(reward.daysRequired) \(trackingType == "days" ? "days" : "actions")")
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                                .padding(.horizontal)
+                                .padding(.vertical, 6)
+                                .background(Color.white.opacity(0.1))
+                                .cornerRadius(10)
+                            }
+                            .onDelete { indexSet in
+                                rewardMilestones.remove(atOffsets: indexSet)
                             }
                         }
+                        .padding(.horizontal)
                     }
-                }
 
-                // Rewards Section
-                Section(header: Text("Rewards")) {
-                    TextField("Reward Name", text: $newRewardName)
-                    Stepper("\(rewardDays) \(trackingType == "days" ? "days" : "actions")", value: $rewardDays, in: 1...365, step: 1)
-                    
-                    // Reward Icon Selection
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack {
-                            ForEach(icons, id: \.self) { icon in
-                                Text(icon)
-                                    .font(.largeTitle)
-                                    .padding()
-                                    .background(selectedRewardIcon == icon ? Color.blue.opacity(0.3) : Color.clear)
-                                    .clipShape(Circle())
-                                    .onTapGesture {
-                                        selectedRewardIcon = icon
-                                    }
-                            }
+                    HStack(spacing: 20) {
+                        Button(action: {
+                            dismiss()
+                        }) {
+                            Text("Cancel")
+                                .foregroundColor(.red)
+                                .font(.headline)
+                                .padding(.vertical, 14)
+                                .padding(.horizontal, 32)
+                                .background(Color.white.opacity(0.2))
+                                .cornerRadius(14)
                         }
-                    }
 
-                    // Add Reward Button
-                    Button(action: {
-                        let newReward = RewardMilestone(daysRequired: rewardDays, rewardName: newRewardName, rewardIcon: selectedRewardIcon)
-                        rewardMilestones.append(newReward)
-                        newRewardName = "" // Reset input
-                    }) {
-                        Label("Add Reward", systemImage: "plus")
-                    }
-                    .disabled(newRewardName.isEmpty)
-                }
-
-                // Existing Rewards List
-                if !rewardMilestones.isEmpty {
-                    Section(header: Text("Existing Rewards")) {
-                        ForEach(rewardMilestones, id: \.id) { reward in
-                            HStack {
-                                Text(reward.rewardName)
-                                    .font(.headline)
-                                Spacer()
-                                Text("\(reward.daysRequired) \(trackingType == "days" ? "days" : "actions")")
-                            }
+                        Button(action: {
+                            saveChanges()
+                            dismiss()
+                        }) {
+                            Text("Save")
+                                .foregroundColor(.white)
+                                .font(.headline)
+                                .padding(.vertical, 14)
+                                .padding(.horizontal, 32)
+                                .background(Color.green)
+                                .cornerRadius(14)
                         }
-                        .onDelete { indexSet in
-                            rewardMilestones.remove(atOffsets: indexSet)
-                        }
+                        .disabled(milestoneName.isEmpty)
                     }
+                    .padding(.top)
                 }
-            }
-            .navigationTitle("Edit Milestone")
-            .toolbar {
-                ToolbarItemGroup(placement: .automatic) {
-                    Button("Save") {
-                        saveChanges()
-                        dismiss()
-                    }
-                    .disabled(milestoneName.isEmpty)
-
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
+                .padding()
             }
         }
+        .navigationBarBackButtonHidden(false)
     }
 
-    /// **Saves the changes to the milestone**
+    // MARK: - Helpers
+
     private func saveChanges() {
         milestone.name = milestoneName
         milestone.trackingType = trackingType
         milestone.rewardMilestones = rewardMilestones
     }
+
+    private func customSectionTitle(_ text: String) -> some View {
+        Text(text.uppercased())
+            .font(.headline)
+            .foregroundColor(.white.opacity(0.9))
+            .padding(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func customTextField(_ placeholder: String, text: Binding<String>) -> some View {
+        TextField(placeholder, text: text)
+            .padding()
+            .background(Color.white.opacity(0.2))
+            .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.white.opacity(0.4), lineWidth: 1)
+            )
+            .foregroundColor(.white)
+            .padding(.horizontal)
+    }
 }
 
 #Preview {
     let container = try! ModelContainer(for: Milestone.self, configurations: .init(isStoredInMemoryOnly: true))
-
     let previewMilestone = Milestone(name: "Test Milestone", rewardMilestones: [], trackingType: "days", daysTracked: 5)
     container.mainContext.insert(previewMilestone)
 
     return MilestoneDetailView(milestone: previewMilestone)
         .modelContainer(container)
-}//
-//  MilestoneDetailView.swift
-//  TrackIt
-//
-//  Created by Camilo Melo bernal on 25/03/25.
-//
-
+}

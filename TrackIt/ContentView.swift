@@ -8,51 +8,78 @@ struct ContentView: View {
     @State private var showingNewMilestone = false
     @State private var selectedMilestone: Milestone?
     @State private var showingRewardView = false
+    @State private var animateButton = false
 
     var body: some View {
         NavigationStack {
-            VStack {
-                if milestones.isEmpty {
-                    Text("No milestones yet.")
-                        .foregroundColor(.gray)
-                        .font(.headline)
-                        .padding()
-                } else {
-                    List {
-                        ForEach(milestones) { milestone in
-                            NavigationLink(destination: MilestoneDetailView(milestone: milestone)) {
-                                milestoneRow(for: milestone)
+            ZStack {
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+
+                VStack {
+                    if milestones.isEmpty {
+                        Text("No milestones yet.")
+                            .foregroundColor(.white)
+                            .font(.headline)
+                            .padding()
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 15) {
+                                ForEach(milestones) { milestone in
+                                    NavigationLink(destination: MilestoneOverviewView(milestone: milestone)) {
+                                        milestoneCard(for: milestone)
+                                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                                            .animation(.spring(response: 0.5, dampingFraction: 0.7), value: milestones)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
                             }
-                        }
-                        .onDelete(perform: deleteMilestone)
-                    }
-                }
-                
-                // ✅ Test Buttons
-                HStack {
-                    Button("Test Notification") {
-                        let testMilestone = Milestone(name: "Test Milestone")
-                        let testReward = RewardMilestone(daysRequired: 3, rewardName: "Free Coffee", rewardIcon: "☕️")
-
-                        // ✅ Schedule notification with a delay (10 seconds)
-                        NotificationManager.shared.scheduleRewardNotification(for: testMilestone, reward: testReward, delay: 10)
-                    }
-
-                    Button("Add Day to First Milestone") {
-                        if let firstMilestone = milestones.first {
-                            incrementMilestone(firstMilestone)
+                            .padding()
                         }
                     }
-                    .padding()
-                    .background(Color.blue.opacity(0.2))
-                    .cornerRadius(10)
                 }
-            }
-            .navigationTitle("TrackIt")
-            .toolbar {
-                ToolbarItem {
-                    Button(action: { showingNewMilestone = true }) {
-                        Label("Add Milestone", systemImage: "plus")
+                .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "target")
+                                .font(.title2)
+                                .foregroundColor(.black)
+                            Text("TrackIt")
+                                .font(.system(size: 40, weight: .bold, design: .rounded))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [Color.blue, Color.purple],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                        }
+                    }
+                }
+
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button(action: { showingNewMilestone = true }) {
+                            Image(systemName: "plus")
+                                .font(.largeTitle)
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(Color.blue)
+                                .clipShape(Circle())
+                                .shadow(radius: 5)
+                                .scaleEffect(animateButton ? 1.1 : 1.0)
+                                .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: animateButton)
+                        }
+                        .padding()
+                        .onAppear {
+                            animateButton = true
+                        }
                     }
                 }
             }
@@ -73,61 +100,89 @@ struct ContentView: View {
         }
     }
 
-    /// **Displays a single milestone row**
-    private func milestoneRow(for milestone: Milestone) -> some View {
-        VStack(alignment: .leading) {
+    private func milestoneCard(for milestone: Milestone) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(milestone.name)
-                    .font(.headline)
+                    .font(.title3)
+                    .bold()
                 Spacer()
                 Text(milestone.trackingType == "days" ? "📆" : "✅")
             }
 
             if milestone.trackingType == "days" {
                 Text("Days in a row: \(milestone.daysTracked)")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
             } else {
                 Text("Completed: \(milestone.actionsCompleted) times")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
             }
 
             if let nextReward = milestone.nextReward {
                 let unit = milestone.trackingType == "days" ? "days" : "actions"
                 Text("Next reward in \(milestone.progressUntilNextReward) \(unit)")
+                    .font(.footnote)
                     .foregroundColor(.blue)
             }
 
             if milestone.trackingType == "count" {
-                HStack {
+                HStack(spacing: 20) {
                     Button(action: { decrementMilestone(milestone) }) {
-                        Image(systemName: "minus.circle")
+                        Image(systemName: "minus")
+                            .font(.title2)
                             .foregroundColor(.red)
+                            .padding()
+                            .background(Color.white)
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.red, lineWidth: 2)
+                            )
                     }
-                    .buttonStyle(BorderlessButtonStyle())
 
                     Button(action: { incrementMilestone(milestone) }) {
-                        Image(systemName: "plus.circle")
+                        Image(systemName: "plus")
+                            .font(.title2)
                             .foregroundColor(.green)
+                            .padding()
+                            .background(Color.white)
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.green, lineWidth: 2)
+                            )
                     }
-                    .buttonStyle(BorderlessButtonStyle())
                 }
+                .padding(.top, 5)
             }
         }
+        .padding()
+        .background(Color.white.opacity(0.9))
+        .cornerRadius(15)
+        .shadow(radius: 5)
     }
 
-    /// **Increments milestone progress (for both tracking types)**
     private func incrementMilestone(_ milestone: Milestone) {
         if let index = milestones.firstIndex(where: { $0.id == milestone.id }) {
             if milestones[index].trackingType == "count" {
                 milestones[index].actionsCompleted += 1
+                milestones[index].actionTimestamps.append(Date())
+
+                // ✅ Detectar si llegó a un reward en modo count
+                if let reward = milestones[index].rewardMilestones.first(where: { $0.daysRequired == milestones[index].actionsCompleted }) {
+                    NotificationManager.shared.scheduleRewardNotification(for: milestones[index], reward: reward)
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: NSNotification.Name("ShowRewardView"), object: milestones[index])
+                    }
+                }
             } else {
-                // ✅ Update days tracked and check for streak reset
-                milestones[index].updateDaysTracked()
                 milestones[index].daysTracked += 1
 
-                // ✅ Check if the user reached a reward milestone
+                // ✅ Detectar si llegó a un reward en modo days
                 if let reward = milestones[index].rewardMilestones.first(where: { $0.daysRequired == milestones[index].daysTracked }) {
                     NotificationManager.shared.scheduleRewardNotification(for: milestones[index], reward: reward)
-                    
-                    // ✅ Trigger the reward view immediately
                     DispatchQueue.main.async {
                         NotificationCenter.default.post(name: NSNotification.Name("ShowRewardView"), object: milestones[index])
                     }
@@ -136,7 +191,6 @@ struct ContentView: View {
         }
     }
 
-    /// **Decrements milestone progress (only for count-based tracking)**
     private func decrementMilestone(_ milestone: Milestone) {
         if let index = milestones.firstIndex(where: { $0.id == milestone.id }) {
             if milestones[index].trackingType == "count" && milestones[index].actionsCompleted > 0 {
@@ -145,7 +199,6 @@ struct ContentView: View {
         }
     }
 
-    /// **Deletes a milestone from SwiftData**
     private func deleteMilestone(offsets: IndexSet) {
         withAnimation {
             for index in offsets {
@@ -157,7 +210,6 @@ struct ContentView: View {
 
 #Preview {
     let container = try! ModelContainer(for: Milestone.self, configurations: .init(isStoredInMemoryOnly: true))
-
     let previewMilestone = Milestone(name: "Test Milestone", rewardMilestones: [], trackingType: "days", daysTracked: 5)
     container.mainContext.insert(previewMilestone)
 

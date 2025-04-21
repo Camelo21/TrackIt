@@ -11,9 +11,10 @@ class Milestone {
     var daysTracked: Int   // The number of days the user has tracked (only for "days" mode)
     var actionsCompleted: Int // Number of total actions completed (only for "count" mode)
     var lastTrackedDate: Date // ✅ Keeps track of the last time the milestone was updated
+    var actionTimestamps: [Date] // ✅ NEW: List of timestamps when actions were completed (only for "count" mode)
 
     /// **Initializes a new milestone with multiple reward milestones.**
-    init(name: String, startDate: Date = Date(), rewardMilestones: [RewardMilestone] = [], trackingType: String = "days", daysTracked: Int = 0, actionsCompleted: Int = 0) {
+    init(name: String, startDate: Date = Date(), rewardMilestones: [RewardMilestone] = [], trackingType: String = "days", daysTracked: Int = 0, actionsCompleted: Int = 0, actionTimestamps: [Date] = []) {
         self.name = name
         self.startDate = startDate
         self.rewardMilestones = rewardMilestones
@@ -21,6 +22,7 @@ class Milestone {
         self.daysTracked = daysTracked
         self.actionsCompleted = actionsCompleted
         self.lastTrackedDate = Date() // ✅ Set last tracked date to today initially
+        self.actionTimestamps = actionTimestamps // ✅ Initialize empty array if not provided
     }
 
     /// **Checks if the user missed a day and resets the streak if necessary.**
